@@ -7,9 +7,8 @@ from tkinter import filedialog as fd
 from tkinter import simpledialog
 
 from typing import List, Union, Optional, Dict
-from copy import copy, deepcopy
 
-from datatypes import UiConfiguration, InterpolationMethods
+from datatypes import UiConfiguration, InterpolationMethods, ToManyActiveDetectors, CantFindPillarAxe
 from read_PECHS import read_dets
 from controller import Calculations
 
@@ -127,9 +126,13 @@ class MainWindow(tk.Frame):
             return
 
         self._conf.remp_path = os.path.dirname(proj_path)
+        self._conf.pechs_path = None
+
         self.remp_path_label['text'] = os.path.split(self._conf.remp_path)[1]
+        self.pechs_path_label['text'] = 'проект не выбран'
 
         self._choice_pechs_button['state'] = 'active'
+        self.calc_button['state'] = 'disabled'
         self._destroy_checkbox_frame()
 
     def _set_pechs_project(self):
@@ -205,6 +208,7 @@ class MainWindow(tk.Frame):
                 continue
 
             try:
+                n = int(self._count_detectors_value.get()) if data.calculation_method == InterpolationMethods.n_nearest else 0
                 self._pechs_values_progressbar[i]['value'] = 0
 
                 d = {
@@ -214,15 +218,30 @@ class MainWindow(tk.Frame):
                     'type': det['type'],
                     'progress_bar': self._pechs_values_progressbar[i],
                     'method': data.calculation_method,
-                    'n': int(self._count_detectors_value.get()),
+                    'n': n,
                     'widget': self,
                     'name': name,
                 }
-            except TypeError:
-                print('Неверное значение в количестве детекторов')
+            except ValueError:
+                mb.showerror('Ошибка', 'Неверное значение в количестве детекторов')
                 return
             except Exception('unexpected exception') as e:
                 print(e)
                 return
 
-            Calculations().calculate(**d)
+            self.calc_button['state'] = 'disabled'
+
+            try:
+                Calculations().calculate(**d)
+
+            except ToManyActiveDetectors as e:
+                mb.showerror('Ошибка', e)
+
+            except CantFindPillarAxe as e:
+                mb.showerror('Ошибка', e)
+
+            except Exception as e:
+                mb.showerror('Ошибка', e)
+                print('error while calculations')
+
+            self.calc_button['state'] = 'normal'

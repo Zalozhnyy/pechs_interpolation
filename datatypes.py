@@ -37,3 +37,16 @@ class UiConfiguration:
     pechs_detectors_families: Dict = None
 
     count_detectors: int = 0
+
+
+class ToManyActiveDetectors(Exception):
+    def __init__(self, max_detectors: int):
+        self.n_det = max_detectors
+
+    def __str__(self):
+        return f'Max detectors count is {self.n_det}'
+
+
+class CantFindPillarAxe(Exception):
+    def __str__(self):
+        return f'Не найдена ось симметрии. Исользуйте другой метод.'

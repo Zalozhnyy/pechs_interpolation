@@ -3,7 +3,7 @@ from typing import Optional, Union
 import numpy as np
 from scipy.spatial import KDTree
 
-from datatypes import Grid, Detector
+from datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe
 
 
 def find_nearest(axe: np.ndarray, point: Union[int, float]) -> int:
@@ -32,9 +32,11 @@ class Interpolation:
             raise TypeError('Unknown detector data structure')
 
         if k > values.shape[0]:
-            raise Exception(f'Too many significant detectors. max is {values.shape[0]}')
+            raise ToManyActiveDetectors(values.shape[0])
+
         elif k == values.shape[0]:
             return True, k - 1
+
         else:
             return True, k
 
@@ -60,7 +62,8 @@ class NearestInterpolation(Interpolation):
         ni, nj, nk = self.mesh.x.shape[0], self.mesh.y.shape[0], self.mesh.z.shape[0],
 
         for i in range(ni):
-            print(f'{i}/{ni - 1}')
+            if (i + 1) % 10 == 0 or i == ni - 1:
+                print(f'Progress {i + 1}/{ni}')
             yield
             for j in range(nj):
                 for k in range(nk):
@@ -94,7 +97,8 @@ class NearestInterpolation(Interpolation):
         ni, nj, nk = self.mesh.x.shape[0], self.mesh.y.shape[0], self.mesh.z.shape[0],
 
         for i in range(ni):
-            print(f'{i}/{ni - 1}')
+            if (i + 1) % 10 == 0 or i == ni - 1:
+                print(f'Progress {i + 1}/{ni}')
             yield
             for j in range(nj):
                 for k in range(nk):
@@ -134,15 +138,18 @@ class PillarInterpolation(Interpolation):
 
     def _get_detectors_axis(self):
         """получаем ось вдоль которой расположены детекторы"""
+        x = len(set(self.detectors.coordinates[:, 0]))
+        y = len(set(self.detectors.coordinates[:, 1]))
+        z = len(set(self.detectors.coordinates[:, 2]))
 
-        if len(set(self.detectors.coordinates[:, 0])) != 1:
+        if x != 1 and y == 1 and z == 1:
             return 0
-        elif len(set(self.detectors.coordinates[:, 1])) != 1:
+        elif x == 1 and y != 1 and z == 1:
             return 1
-        elif len(set(self.detectors.coordinates[:, 2])) != 1:
+        elif x == 1 and y == 1 and z != 1:
             return 2
         else:
-            raise Exception('Не найдена ось симметрии. Pillar')
+            raise CantFindPillarAxe()
 
     def _fill_results(self, array: np.ndarray, space: np.ndarray, value: float):
 

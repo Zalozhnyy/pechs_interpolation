@@ -1,6 +1,8 @@
 import os
 import sys
 
+sys.path.append(os.path.dirname(__file__))
+
 import tkinter as tk
 
 from pi_main_window import MainWindow
@@ -11,15 +13,14 @@ def main():
     root.title('Pechs interpolation')
     root.geometry('400x500')
 
-    try:
-        if len(sys.argv) > 1:
-            projectfilename = sys.argv[1]
-        else:
+    if len(sys.argv) > 1:
+        ini = sys.argv[1]
+    else:
+        try:
             print(f'Проект {projectfilename}')
-
-        ini = os.path.normpath(projectfilename)
-    except Exception:
-        ini = None
+            ini = os.path.normpath(projectfilename)
+        except Exception:
+            ini = None
 
     main_win = MainWindow(root, proj=ini)
     root.mainloop()

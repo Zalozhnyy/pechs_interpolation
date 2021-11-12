@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from interpolation import NearestInterpolation, PillarInterpolation
-from datatypes import Grid, Detector, InterpolationMethods
+from datatypes import Grid, Detector, InterpolationMethods, ToManyActiveDetectors
 from read_REMP import read_REMP
 from interpolation_save import Save
 
@@ -122,9 +122,6 @@ class Calculations:
             except StopIteration:
                 print(f'Завершён расчет {kwargs["name"]}')
                 break
-            except Exception('Error while calculation') as e:
-                print(e)
-                break
 
     def _calculate_current(self, *args, **kwargs):
         layer = int(kwargs['name'].split('_')[1])
@@ -166,9 +163,9 @@ class Calculations:
 
 
 def debug_plot(mesh: Grid):
-    for k in range(0, mesh.y.shape[2], 20):
+    for k in range(0, mesh.y.shape[0], 10):
         # for k in range(55, 115, 5):
-        plt.contourf(mesh.x[:, :, k], mesh.y[:, :, k], mesh.array[:, :, k], cmap=plt.cm.bone)
+        plt.contourf(mesh.x, mesh.z, mesh.array[:, k, :], cmap=plt.cm.bone)
         plt.title(f'k={k}')
         plt.colorbar()
         plt.show()
