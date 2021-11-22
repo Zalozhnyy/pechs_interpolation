@@ -9,7 +9,7 @@ from tkinter import simpledialog
 from typing import List, Union, Optional, Dict
 
 from datatypes import UiConfiguration, InterpolationMethods, ToManyActiveDetectors, CantFindPillarAxe
-from read_PECHS import read_dets
+from read_PECHS import read_dets, read_tmpl
 from controller import Calculations
 
 INTERPOLATION_METHODS = {

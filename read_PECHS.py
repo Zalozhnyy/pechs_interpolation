@@ -73,6 +73,32 @@ def read_spcPechs(spcFN):
     return d
 
 
+def read_tmpl(path):
+    with open(path, 'r') as f:
+        d = {}
+        for line in f:
+            line = line.split('#')[0].strip()
+
+            if len(line) < 3:
+                break
+            k, v = line.strip().split('=')
+            if "ENERGY_GRID_TYPE" in k:
+                d["type"] = v
+            elif "UNIFORM_MIN_ENERGY" in k:
+                d["minen"] = float(v)
+            elif "UNIFORM_MAX_ENERGY" in k:
+                d["maxen"] = float(v)
+            elif "UNIFORM_ENERGY_RES" in k:
+                d["res"] = int(v)
+            elif "CUSTOM" in k:
+                vec = list(map(float, v.split()))
+                d["energies"] = [0.5 * (e1 + e2) for e1, e2 in zip(vec[1:], vec[:-1])]
+    if 'energies' not in d:
+        interv = (d['maxen'] - d['minen']) / d['res']
+        d['energies'] = [d['minen'] + 0.5 * interv + i * interv for i in range(d['res'])]
+    return d
+
+
 def read_dets(path):
     dets = []
     with open(path, 'r') as detf:

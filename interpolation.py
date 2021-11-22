@@ -4,15 +4,7 @@ import numpy as np
 from scipy.spatial import KDTree
 
 from datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe
-
-
-def find_nearest(axe: np.ndarray, point: Union[int, float]) -> int:
-    for i in range(axe.shape[0] - 1):
-        if round(axe[i], 6) == point:
-            return i
-        elif round(axe[i], 6) < point < round(axe[i + 1], 6):
-            return i
-    return axe.shape[0] - 1
+from pi_utility import find_nearest
 
 
 class Interpolation:

@@ -1,13 +1,15 @@
 import os
+from collections import defaultdict
 
 import numpy as np
 
 import matplotlib.pyplot as plt
 
 from interpolation import NearestInterpolation, PillarInterpolation
-from datatypes import Grid, Detector, InterpolationMethods, ToManyActiveDetectors
+from datatypes import Grid, Detector, InterpolationMethods
+import datatypes
 from read_REMP import read_REMP
-from interpolation_save import Save
+from interpolation_save import Save, SaveFlux
 
 
 class DataCreator:
@@ -92,6 +94,61 @@ class GridProcessing:
         results = np.loadtxt(res, dtype=float)[:, ax[direction]]
         return Detector(coords, results, layer)
 
+    @classmethod
+    def process_pechs_flux_basic(cls, lst: str, res: str):
+        data = np.loadtxt(lst, dtype=float)
+        results = np.loadtxt(res, dtype=float)  # basic results
+
+        detectors = []
+        for d, r in zip(data, results):
+            detector = datatypes.FluxDetector(*d[:6], results=r)
+            norm = (detector.nx ** 2 + detector.ny ** 2 + detector.nz ** 2) ** 0.5
+
+            detector.nx /= norm
+            detector.ny /= norm
+            detector.nz /= norm
+
+            detector.projections = cls._get_projections(detector)
+            detectors.append(detector)
+
+        return detectors
+
+    @staticmethod
+    def _get_projections(detector: datatypes.FluxDetector):
+
+        arr = defaultdict(np.ndarray)
+
+        def foo(vector, axe):
+            if vector > 0:
+                arr[axe] = detector.results[:] * vector
+                arr['_' + axe] = detector.results[:] * 0
+            elif vector < 0:
+                arr['_' + axe] = detector.results[:] * abs(vector)
+                arr[axe] = detector.results[:] * 0
+            else:
+                arr['_' + axe] = detector.results[:] * 0
+                arr[axe] = detector.results[:] * 0
+
+        foo(detector.nx, 'nx')
+        foo(detector.ny, 'ny')
+        foo(detector.nz, 'nz')
+
+        projections = []
+
+        for i in range(detector.results.shape[0]):
+            projections.append(
+                datatypes.DetectorValuesProjections(
+                    arr['nx'][i],
+                    arr['ny'][i],
+                    arr['nz'][i],
+                    arr['_nx'][i],
+                    arr['_ny'][i],
+                    arr['_nz'][i],
+                )
+            )
+
+        return projections
+
 
 class Calculations:
     def _coroutine(self, *args, **kwargs):
@@ -174,21 +231,27 @@ def debug_plot(mesh: Grid):
 def main():
     # mesh, detectors = DataCreator.create_data_2d()
 
-    project_path = r'C:\Users\niczz\Dropbox\work_cloud\projects\grant_project'
+    project_path = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation'
 
-    lst_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\grant_project\pechs\pechs_box\initials\energy_4_1.lst'
-    res_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\grant_project\pechs\pechs_box\results\energy_4_1.res'
+    lst_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\initials\flux_2_1_1.lst'
+    res_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\results\flux_2_1_1.res'
 
     _, grid, space, _, _, _ = read_REMP(project_path)
 
-    mesh = GridProcessing.process_remp(grid[0]['i05'], grid[1]['i05'], grid[2]['i05'], space)
+    mesh = GridProcessing.process_remp(grid[0]['i'], grid[1]['i'], grid[2]['i'], space)
 
-    detectors = GridProcessing.process_pechs_direct_files(lst_file, res_file, 4)
+    detectors = GridProcessing.process_pechs_flux_basic(lst_file, res_file)
     # detectors = GridProcessing.process_pechs_current(lst_file, res_file, 4, 'z')
 
     # mesh, detectors = grd_creator.create_pillar()
     print(f'GRID | {mesh.array.shape}')
-
+    meta = {
+        'name': 'flux_2_1_1',
+        'energy': [50, 150, 250, 350, 450],
+        'remp_dir': project_path
+    }
+    s = SaveFlux(detectors, **meta)
+    exit(0)
     # gen = PillarInterpolation(mesh, detectors).pillar()
     gen = NearestInterpolation(mesh, detectors).k_nearest(2)
 

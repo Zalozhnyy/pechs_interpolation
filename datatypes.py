@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from dataclasses import dataclass
 from enum import Enum
@@ -37,6 +37,30 @@ class UiConfiguration:
     pechs_detectors_families: Dict = None
 
     count_detectors: int = 0
+
+
+@dataclass
+class DetectorValuesProjections:
+    wx: float = 0.
+    wy: float = 0.
+    wz: float = 0.
+
+    w_x: float = 0.
+    w_y: float = 0.
+    w_z: float = 0.
+
+
+@dataclass
+class FluxDetector:
+    x: float
+    y: float
+    z: float
+    nx: float
+    ny: float
+    nz: float
+
+    results: np.ndarray
+    projections: List[DetectorValuesProjections] = None
 
 
 class ToManyActiveDetectors(Exception):
