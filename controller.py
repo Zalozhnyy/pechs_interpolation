@@ -215,8 +215,6 @@ class Calculations:
         Save().save_remp(mesh, kwargs['remp_dir'], 'en_' + '_'.join(kwargs['name'].split('_')[1:]))
 
     def _calculate_flux(self, *args, **kwargs):
-        _, grid, space, _, _, _ = read_REMP(kwargs['remp_dir'])
-        mesh = GridProcessing.process_remp(grid[0]['i'], grid[1]['i'], grid[2]['i'], space)
         detectors = GridProcessing.process_pechs_flux_basic(kwargs['lst'], kwargs['res'])
 
         SaveFlux(detectors, **kwargs)
