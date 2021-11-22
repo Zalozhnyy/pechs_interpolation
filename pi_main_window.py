@@ -1,6 +1,7 @@
 import os
 
 import tkinter as tk
+import traceback
 from tkinter import ttk
 from tkinter import messagebox as mb
 from tkinter import filedialog as fd
@@ -18,7 +19,7 @@ INTERPOLATION_METHODS = {
     'Столб': InterpolationMethods.pillar,
 }
 
-SUPPORTED_CALCS = {'energy', 'current'}
+SUPPORTED_CALCS = {'energy', 'current', 'flux'}
 
 
 class MainWindow(tk.Frame):
@@ -222,6 +223,17 @@ class MainWindow(tk.Frame):
                     'widget': self,
                     'name': name,
                 }
+
+                if det['type'] == 'FLUX' or 'flux' in name:
+                    if det['measure'] == 'BASIC':
+                        d['method'] = InterpolationMethods.flux_basic
+                    elif det['measure'] == 'DETAILED':
+                        d['method'] = InterpolationMethods.flux_detailed
+                    else:
+                        raise Exception('Unknown measure type of flux detector')
+
+                    d['template'] = read_tmpl(os.path.join(data.pechs_path, 'initials', det['templ']))
+
             except ValueError:
                 mb.showerror('Ошибка', 'Неверное значение в количестве детекторов')
                 return
@@ -242,6 +254,6 @@ class MainWindow(tk.Frame):
 
             except Exception as e:
                 mb.showerror('Ошибка', e)
-                print('error while calculations')
+                print(traceback.print_tb(e))
 
             self.calc_button['state'] = 'normal'

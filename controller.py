@@ -168,6 +168,10 @@ class Calculations:
             gen = PillarInterpolation(mesh, detectors).pillar()
             v = pb['length'] // detectors.coordinates.shape[0]
 
+        elif kwargs['method'] == InterpolationMethods.flux_basic:
+            SaveFlux(detectors, **kwargs)
+            return
+
         else:
             raise Exception('Unknown interpolation method')
 
@@ -210,11 +214,23 @@ class Calculations:
         self._coroutine(mesh, detectors, **kwargs)
         Save().save_remp(mesh, kwargs['remp_dir'], 'en_' + '_'.join(kwargs['name'].split('_')[1:]))
 
+    def _calculate_flux(self, *args, **kwargs):
+        _, grid, space, _, _, _ = read_REMP(kwargs['remp_dir'])
+        mesh = GridProcessing.process_remp(grid[0]['i'], grid[1]['i'], grid[2]['i'], space)
+        detectors = GridProcessing.process_pechs_flux_basic(kwargs['lst'], kwargs['res'])
+
+        SaveFlux(detectors, **kwargs)
+
     def calculate(self, *args, **kwargs):
         if kwargs['type'] == 'ENERGY':
             self._calculate_energy(**kwargs)
+
         elif kwargs['type'] == 'CURRENT':
             self._calculate_current(**kwargs)
+
+        elif kwargs['type'] == 'FLUX':
+            self._calculate_flux(**kwargs)
+
         else:
             raise Exception(f'Unsupported type {kwargs["type"]}')
 

@@ -9,6 +9,8 @@ class InterpolationMethods(Enum):
     nearest = 0
     n_nearest = 1
     pillar = 2
+    flux_basic = 3
+    flux_detailed = 3
 
 
 @dataclass

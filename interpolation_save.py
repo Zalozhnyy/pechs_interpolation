@@ -34,6 +34,7 @@ class SaveFlux:
         self.detectors: List[datatypes.FluxDetector] = detectors
 
         self.meta_data = kwargs
+        self.meta_data['energy'] = kwargs['template']['energies']
 
         self.TEMPLATE_CAP = '''{particle_name:s}
         Spectre number
@@ -60,8 +61,12 @@ class SaveFlux:
             self._saver(5, 'w_z', -3),
         )
 
+        self.meta_data['progress_bar'].configure(maximum=len(generators))
+
         for generator in generators:
             self._exec_generator(generator)
+            self.meta_data['progress_bar']['value'] += 1
+            self.meta_data['widget'].update_idletasks()
 
     def _exec_generator(self, generator):
         while True:
