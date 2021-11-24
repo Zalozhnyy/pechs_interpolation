@@ -9,9 +9,9 @@ from tkinter import simpledialog
 
 from typing import List, Union, Optional, Dict
 
-from datatypes import UiConfiguration, InterpolationMethods, ToManyActiveDetectors, CantFindPillarAxe
+from pi_datatypes import UiConfiguration, InterpolationMethods, ToManyActiveDetectors, CantFindPillarAxe
 from read_PECHS import read_dets, read_tmpl
-from controller import Calculations
+from pi_controller import Calculations
 
 INTERPOLATION_METHODS = {
     'По ближайшему': InterpolationMethods.nearest,

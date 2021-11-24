@@ -2,8 +2,8 @@ import os
 from copy import copy
 from typing import List
 
-from datatypes import Grid, InterpolationMethods
-import datatypes
+from pi_datatypes import Grid, InterpolationMethods
+import pi_datatypes
 
 
 class Save:
@@ -30,8 +30,8 @@ class Save:
 
 class SaveFlux:
 
-    def __init__(self, detectors: List[datatypes.FluxDetector], **kwargs):
-        self.detectors: List[datatypes.FluxDetector] = detectors
+    def __init__(self, detectors: List[pi_datatypes.FluxDetector], **kwargs):
+        self.detectors: List[pi_datatypes.FluxDetector] = detectors
 
         self.meta_data = kwargs
         self.meta_data['energy'] = kwargs['template']['energies']

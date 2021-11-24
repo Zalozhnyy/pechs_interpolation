@@ -5,12 +5,12 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from interpolation import NearestInterpolation, PillarInterpolation
-from datatypes import Grid, Detector, InterpolationMethods
+from pi_interpolation import NearestInterpolation, PillarInterpolation
+from pi_datatypes import Grid, Detector, InterpolationMethods
 import pi_utility
-import datatypes
+import pi_datatypes
 from read_REMP import read_REMP
-from interpolation_save import Save, SaveFlux
+from pi_interpolation_save import Save, SaveFlux
 
 
 class DataCreator:
@@ -102,7 +102,7 @@ class GridProcessing:
 
         detectors = []
         for d, r in zip(data, results):
-            detector = datatypes.FluxDetector(*d[:6], results=r)
+            detector = pi_datatypes.FluxDetector(*d[:6], results=r)
             norm = (detector.nx ** 2 + detector.ny ** 2 + detector.nz ** 2) ** 0.5
 
             detector.nx /= norm
@@ -151,7 +151,7 @@ class GridProcessing:
                     projections.append(pi_utility.get_projection_detailed((nx[j], ny[j], nz[j]), results[j]))
 
                 detectors.append(
-                    datatypes.FluxDetector(
+                    pi_datatypes.FluxDetector(
                         x,
                         y,
                         z,

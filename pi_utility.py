@@ -2,7 +2,7 @@ import numpy as np
 
 from collections import defaultdict
 from typing import Union, List
-import datatypes
+import pi_datatypes
 
 
 def find_nearest(axe: np.ndarray, point: Union[int, float]) -> int:
@@ -38,7 +38,7 @@ def find_nearest_binary(axe: np.ndarray, point: Union[int, float]) -> int:
         return l - 1
 
 
-def get_projection_basic(detector: datatypes.FluxDetector) -> List[datatypes.DetectorValuesProjections]:
+def get_projection_basic(detector: pi_datatypes.FluxDetector) -> List[pi_datatypes.DetectorValuesProjections]:
     arr = defaultdict(np.ndarray)
 
     def foo(vector, axe):
@@ -60,7 +60,7 @@ def get_projection_basic(detector: datatypes.FluxDetector) -> List[datatypes.Det
 
     for i in range(detector.results.shape[0]):
         projections.append(
-            datatypes.DetectorValuesProjections(
+            pi_datatypes.DetectorValuesProjections(
                 arr['nx'][i],
                 arr['ny'][i],
                 arr['nz'][i],
@@ -73,7 +73,7 @@ def get_projection_basic(detector: datatypes.FluxDetector) -> List[datatypes.Det
     return projections
 
 
-def get_projection_detailed(vector, value) -> datatypes.DetectorValuesProjections:
+def get_projection_detailed(vector, value) -> pi_datatypes.DetectorValuesProjections:
     nx, ny, nz = vector
 
     arr = defaultdict(float)
@@ -93,7 +93,7 @@ def get_projection_detailed(vector, value) -> datatypes.DetectorValuesProjection
     foo(ny, 'ny', value)
     foo(nz, 'nz', value)
 
-    return datatypes.DetectorValuesProjections(
+    return pi_datatypes.DetectorValuesProjections(
         arr['nx'],
         arr['ny'],
         arr['nz'],

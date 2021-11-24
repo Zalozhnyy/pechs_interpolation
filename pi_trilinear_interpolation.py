@@ -1,6 +1,6 @@
 from typing import Union
 
-from datatypes import Grid
+from pi_datatypes import Grid
 
 import numpy as np
 import matplotlib.pyplot as plt

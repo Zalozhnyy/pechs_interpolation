@@ -3,7 +3,7 @@ from typing import Optional, Union
 import numpy as np
 from scipy.spatial import KDTree
 
-from datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe
+from pi_datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe
 from pi_utility import find_nearest
 
 
