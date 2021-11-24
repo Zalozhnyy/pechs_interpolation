@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from dataclasses import dataclass
 from enum import Enum
@@ -9,8 +9,7 @@ class InterpolationMethods(Enum):
     nearest = 0
     n_nearest = 1
     pillar = 2
-    flux_basic = 3
-    flux_detailed = 3
+    flux_translation = 3
 
 
 @dataclass
@@ -57,9 +56,9 @@ class FluxDetector:
     x: float
     y: float
     z: float
-    nx: float
-    ny: float
-    nz: float
+    nx: Union[float, List[float]]
+    ny: Union[float, List[float]]
+    nz: Union[float, List[float]]
 
     results: np.ndarray
     projections: List[DetectorValuesProjections] = None

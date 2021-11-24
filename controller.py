@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from interpolation import NearestInterpolation, PillarInterpolation
 from datatypes import Grid, Detector, InterpolationMethods
+import pi_utility
 import datatypes
 from read_REMP import read_REMP
 from interpolation_save import Save, SaveFlux
@@ -108,46 +109,61 @@ class GridProcessing:
             detector.ny /= norm
             detector.nz /= norm
 
-            detector.projections = cls._get_projections(detector)
+            detector.projections = pi_utility.get_projection_basic(detector)
             detectors.append(detector)
 
         return detectors
 
-    @staticmethod
-    def _get_projections(detector: datatypes.FluxDetector):
+    @classmethod
+    def process_pechs_flux_detailed(cls, lst: str, res: str, en_count: int):
 
-        arr = defaultdict(np.ndarray)
+        with open(lst, 'r', encoding='utf-8') as lf, open(res, 'r', encoding='utf-8') as rf:
+            coordinates = lf.readlines()
+            res_data = np.array([i.strip().split() for i in rf.readlines() if i != '\n'], dtype=float)
 
-        def foo(vector, axe):
-            if vector > 0:
-                arr[axe] = detector.results[:] * vector
-                arr['_' + axe] = detector.results[:] * 0
-            elif vector < 0:
-                arr['_' + axe] = detector.results[:] * abs(vector)
-                arr[axe] = detector.results[:] * 0
-            else:
-                arr['_' + axe] = detector.results[:] * 0
-                arr[axe] = detector.results[:] * 0
+            if len(coordinates) == res_data.shape[0]:
+                raise Exception(f'Результаты не похожи на детальный вывод. {os.path.basename(res)}')
 
-        foo(detector.nx, 'nx')
-        foo(detector.ny, 'ny')
-        foo(detector.nz, 'nz')
+            res_pointer = 0
+            detectors = []
 
-        projections = []
+            for det in range(len(coordinates)):
+                x, y, z = [float(i) for i in coordinates[det].strip().split()[:3]]
 
-        for i in range(detector.results.shape[0]):
-            projections.append(
-                datatypes.DetectorValuesProjections(
-                    arr['nx'][i],
-                    arr['ny'][i],
-                    arr['nz'][i],
-                    arr['_nx'][i],
-                    arr['_ny'][i],
-                    arr['_nz'][i],
+                res_slice = res_data[res_pointer:res_pointer + en_count]
+                res_pointer += en_count
+
+                nx = res_slice[:, 2]
+                ny = res_slice[:, 3]
+                nz = res_slice[:, 4]
+                results = res_slice[:, 1]
+
+                for i in range(len(nx)):
+                    norm = (nx[i] ** 2 + ny[i] ** 2 + nz[i] ** 2) ** 0.5
+
+                    nx[i] = 0. if nx[i] == 0. else nx[i] / norm
+                    ny[i] = 0. if ny[i] == 0. else ny[i] / norm
+                    nz[i] = 0. if nz[i] == 0. else nz[i] / norm
+
+
+                projections = []
+                for j in range(results.shape[0]):
+                    projections.append(pi_utility.get_projection_detailed((nx[j], ny[j], nz[j]), results[j]))
+
+                detectors.append(
+                    datatypes.FluxDetector(
+                        x,
+                        y,
+                        z,
+                        nx.tolist(),
+                        ny.tolist(),
+                        nz.tolist(),
+                        results,
+                        projections
+                    )
                 )
-            )
 
-        return projections
+            return detectors
 
 
 class Calculations:
@@ -168,7 +184,7 @@ class Calculations:
             gen = PillarInterpolation(mesh, detectors).pillar()
             v = pb['length'] // detectors.coordinates.shape[0]
 
-        elif kwargs['method'] == InterpolationMethods.flux_basic:
+        elif kwargs['method'] == InterpolationMethods.flux_translation:
             SaveFlux(detectors, **kwargs)
             return
 
@@ -215,8 +231,14 @@ class Calculations:
         Save().save_remp(mesh, kwargs['remp_dir'], 'en_' + '_'.join(kwargs['name'].split('_')[1:]))
 
     def _calculate_flux(self, *args, **kwargs):
-        detectors = GridProcessing.process_pechs_flux_basic(kwargs['lst'], kwargs['res'])
-
+        if kwargs['measure'] == 'BASIC':
+            detectors = GridProcessing.process_pechs_flux_basic(kwargs['lst'], kwargs['res'])
+        elif kwargs['measure'] == 'DETAILED':
+            detectors = GridProcessing.process_pechs_flux_detailed(kwargs['lst'],
+                                                                   kwargs['res'],
+                                                                   len(kwargs['template']['energies']))
+        else:
+            raise Exception('unknown measure type')
         SaveFlux(detectors, **kwargs)
 
     def calculate(self, *args, **kwargs):
@@ -245,23 +267,26 @@ def debug_plot(mesh: Grid):
 def main():
     # mesh, detectors = DataCreator.create_data_2d()
 
-    project_path = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation'
+    project_path = r'C:\Users\\niczz\Dropbox\work_cloud\projects\project_test_interpolation'
 
-    lst_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\initials\flux_2_1_1.lst'
-    res_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\results\flux_2_1_1.res'
+    lst_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\initials\flux_2_4_1.lst'
+    res_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\results\flux_2_4_1.res'
 
     _, grid, space, _, _, _ = read_REMP(project_path)
 
     mesh = GridProcessing.process_remp(grid[0]['i'], grid[1]['i'], grid[2]['i'], space)
 
-    detectors = GridProcessing.process_pechs_flux_basic(lst_file, res_file)
+    detectors = GridProcessing.process_pechs_flux_detailed(lst_file, res_file, 5)
     # detectors = GridProcessing.process_pechs_current(lst_file, res_file, 4, 'z')
 
     # mesh, detectors = grd_creator.create_pillar()
     print(f'GRID | {mesh.array.shape}')
     meta = {
-        'name': 'flux_2_1_1',
-        'energy': [50, 150, 250, 350, 450],
+        'name': 'flux_2_4_1',
+        'template': {
+            'energies': [50, 150, 250, 350, 450],
+        },
+        'measure': 'DETAILED',
         'remp_dir': project_path
     }
     s = SaveFlux(detectors, **meta)

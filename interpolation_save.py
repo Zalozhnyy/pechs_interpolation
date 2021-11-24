@@ -53,12 +53,12 @@ class SaveFlux:
 
     def save(self):
         generators = (
-            self._saver(0, 'wx', 1),
-            self._saver(1, 'wy', 2),
-            self._saver(2, 'wz', 3),
-            self._saver(3, 'w_x', -1),
-            self._saver(4, 'w_y', -2),
-            self._saver(5, 'w_z', -3),
+            self._saver(1, 'wx', 1),
+            self._saver(3, 'wy', 2),
+            self._saver(5, 'wz', 3),
+            self._saver(0, 'w_x', -1),
+            self._saver(2, 'w_y', -2),
+            self._saver(4, 'w_z', -3),
         )
 
         self.meta_data['progress_bar'].configure(maximum=len(generators))
@@ -76,19 +76,21 @@ class SaveFlux:
                 break
 
     def _saver(self, indx: int, attr, direction):
-        spc_ind = list(map(int, self.meta_data['name'].split('_')[1:])) + [indx]
-        spc_ind[-1], spc_ind[-2] = spc_ind[-2], spc_ind[-1]
-        particle = spc_ind[-1]
-        fname = '_'.join(list(map(str, spc_ind))) + '.spc'
-        spc_ind = ((spc_ind[-4] * 100 + spc_ind[-3]) * 10 + spc_ind[-2]) * 10 + spc_ind[-1]
+        from_, to_, particle = list(map(int, self.meta_data['name'].split('_')[1:]))
+
+        fname = '_'.join(list(map(str, [from_, to_, indx, particle]))) + '.spc'
+
+        sp_number = f'{int(from_):0>2d}{int(to_):0>2d}{indx}{particle}'
 
         lines = copy(self.TEMPLATE_CAP).format(
             particle_name='electron',
-            spc_number=spc_ind,
+            spc_number=sp_number,
             en_count=len(self.meta_data['energy']),
             detectors_count=len(self.detectors)
         ).split('\n')
         lines = [i.replace(' ', '') for i in lines]
+
+        spaces = ' ' * 4
 
         yield
 
@@ -96,15 +98,24 @@ class SaveFlux:
             lines.append(f'{detector.x} {detector.y} {detector.z} {direction}')
 
             for i, projection in enumerate(detector.projections):
-                spaces = ' ' * 4
-                p = projection.__getattribute__(attr)
-                lines.append(
-                    f"{self.meta_data['energy'][i] * 1e-3:15.8E}{spaces}"
-                    f"{p:15.8E}{spaces}"
-                    f"{detector.nx:10.5E}{spaces}"
-                    f"{detector.ny:10.5E}{spaces}"
-                    f"{detector.nz:10.5E}{spaces}"
-                )
+
+                if self.meta_data['measure'] == 'BASIC':
+                        p = projection.__getattribute__(attr)
+                        lines.append(
+                            self._format_string(
+                                self.meta_data['energy'][i], detector.nx, detector.ny, detector.nz, p, spaces)
+                        )
+
+                elif self.meta_data['measure'] == 'DETAILED':
+                        p = projection.__getattribute__(attr)
+
+                        lines.append(
+                            self._format_string(
+                                self.meta_data['energy'][i], detector.nx[i], detector.ny[i], detector.nz[i], p, spaces)
+                        )
+
+                else:
+                    raise Exception('unknown measure type')
 
             yield
 
@@ -115,3 +126,13 @@ class SaveFlux:
 
         print(f'Save {fname} done')
         yield
+
+    def _format_string(self, en, nx, ny, nz, value, spaces):
+
+        s = f"{en * 1e-3:15.8E}{spaces}" \
+            f"{nx:10.5E}{spaces}" \
+            f"{ny:10.5E}{spaces}" \
+            f"{nz:10.5E}{spaces}" \
+            f"{value:15.8E}{spaces}"
+
+        return s

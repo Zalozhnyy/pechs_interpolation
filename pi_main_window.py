@@ -225,13 +225,8 @@ class MainWindow(tk.Frame):
                 }
 
                 if det['type'] == 'FLUX' or 'flux' in name:
-                    if det['measure'] == 'BASIC':
-                        d['method'] = InterpolationMethods.flux_basic
-                    elif det['measure'] == 'DETAILED':
-                        d['method'] = InterpolationMethods.flux_detailed
-                    else:
-                        raise Exception('Unknown measure type of flux detector')
-
+                    d['method'] = InterpolationMethods.flux_translation
+                    d['measure'] = det['measure']
                     d['template'] = read_tmpl(os.path.join(data.pechs_path, 'initials', det['templ']))
 
             except ValueError:
@@ -253,7 +248,7 @@ class MainWindow(tk.Frame):
                 mb.showerror('Ошибка', e)
 
             except Exception as e:
-                mb.showerror('Ошибка', e)
                 print(traceback.print_tb(e))
+                mb.showerror('Ошибка', e)
 
             self.calc_button['state'] = 'normal'
