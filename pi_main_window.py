@@ -17,6 +17,7 @@ INTERPOLATION_METHODS = {
     'По ближайшему': InterpolationMethods.nearest,
     'По n ближайшим': InterpolationMethods.n_nearest,
     'Столб': InterpolationMethods.pillar,
+    'Формат spc (только для flux)': InterpolationMethods.flux_translation,
 }
 
 SUPPORTED_CALCS = {'energy', 'current', 'flux'}
@@ -94,7 +95,7 @@ class MainWindow(tk.Frame):
 
         self.interpolation_methods_combobox = ttk.Combobox(self.configurations_frame,
                                                            value=[v for v in INTERPOLATION_METHODS.keys()],
-                                                           width=25,
+                                                           width=30,
                                                            state='readonly')
 
         self.interpolation_methods_combobox.grid(row=0, column=1, padx=15, pady=10)
@@ -208,8 +209,14 @@ class MainWindow(tk.Frame):
             if not self._pechs_values_activations[i].get():
                 continue
 
+            if det['type'] != 'FLUX' and data.calculation_method == InterpolationMethods.flux_translation:
+                print(f'Для {name} недоступен выбранный метод.')
+                self._pechs_values_activations[i].set(False)
+                continue
+
             try:
-                n = int(self._count_detectors_value.get()) if data.calculation_method == InterpolationMethods.n_nearest else 0
+                n = int(
+                    self._count_detectors_value.get()) if data.calculation_method == InterpolationMethods.n_nearest else 0
                 self._pechs_values_progressbar[i]['value'] = 0
 
                 d = {
@@ -225,13 +232,13 @@ class MainWindow(tk.Frame):
                 }
 
                 if det['type'] == 'FLUX' or 'flux' in name:
-                    d['method'] = InterpolationMethods.flux_translation
                     d['measure'] = det['measure']
                     d['template'] = read_tmpl(os.path.join(data.pechs_path, 'initials', det['templ']))
 
             except ValueError:
                 mb.showerror('Ошибка', 'Неверное значение в количестве детекторов')
                 return
+
             except Exception('unexpected exception') as e:
                 print(e)
                 return
@@ -248,7 +255,8 @@ class MainWindow(tk.Frame):
                 mb.showerror('Ошибка', e)
 
             except Exception as e:
-                print(traceback.print_tb(e))
-                mb.showerror('Ошибка', e)
+                print(traceback.format_exc())
+                # mb.showerror('Ошибка', e)
+                break
 
             self.calc_button['state'] = 'normal'

@@ -49,9 +49,7 @@ class SaveFlux:
         {detectors_count}
         Energy + normal'''
 
-        self.save()
-
-    def save(self):
+    def translation_save(self):
         generators = (
             self._saver(1, 'wx', 1),
             self._saver(3, 'wy', 2),
@@ -61,12 +59,13 @@ class SaveFlux:
             self._saver(4, 'w_z', -3),
         )
 
-        self.meta_data['progress_bar'].configure(maximum=len(generators))
-
         for generator in generators:
             self._exec_generator(generator)
-            self.meta_data['progress_bar']['value'] += 1
-            self.meta_data['widget'].update_idletasks()
+            yield
+
+    def save_one_dim(self, indx: int, attr, direction):
+        generator = self._saver(indx, attr, direction)
+        self._exec_generator(generator)
 
     def _exec_generator(self, generator):
         while True:
@@ -100,19 +99,20 @@ class SaveFlux:
             for i, projection in enumerate(detector.projections):
 
                 if self.meta_data['measure'] == 'BASIC':
-                        p = projection.__getattribute__(attr)
-                        lines.append(
-                            self._format_string(
-                                self.meta_data['energy'][i], detector.nx, detector.ny, detector.nz, p, spaces)
-                        )
+                    p = projection.__getattribute__(attr)
+                    lines.append(
+                        self._format_string(
+                            self.meta_data['energy'][i], detector.nx, detector.ny, detector.nz, p, spaces)
+                    )
 
                 elif self.meta_data['measure'] == 'DETAILED':
-                        p = projection.__getattribute__(attr)
+                    p = projection.__getattribute__(attr)
 
-                        lines.append(
-                            self._format_string(
-                                self.meta_data['energy'][i], detector.nx[i], detector.ny[i], detector.nz[i], p, spaces)
-                        )
+                    lines.append(
+                        self._format_string(
+                            self.meta_data['energy'][i], detector.nx_d[i], detector.ny_d[i], detector.nz_d[i], p,
+                            spaces)
+                    )
 
                 else:
                     raise Exception('unknown measure type')

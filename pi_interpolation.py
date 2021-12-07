@@ -1,17 +1,31 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
 
+import time
 import numpy as np
 from scipy.spatial import KDTree
 
-from pi_datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe
+import pi_utility
+from pi_datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe, FluxDetector, InterpolationMethods, \
+    DetectorValuesProjections
 from pi_utility import find_nearest
+from pi_interpolation_save import SaveFlux
+
+
+def log_time(func, *args, **kwargs):
+    def wrapper():
+        t = time.time()
+        res = func(*args, **kwargs)
+        print(f'{func.__name__} exec time: {time.time() - t}')
+        return res
+
+    return wrapper
 
 
 class Interpolation:
-    def __init__(self, grd: Grid, det: Union[Grid, Detector]):
+    def __init__(self, grd: Grid, det: Union[Grid, Detector, List[FluxDetector]]):
 
         self.mesh: Grid = grd
-        self.detectors: Union[Grid, Detector] = det
+        self.detectors: Union[Grid, Detector, List[FluxDetector]] = det
 
     def _allow_interpolation(self, k):
         if isinstance(self.detectors, Grid):
@@ -192,3 +206,214 @@ class PillarInterpolation(Interpolation):
                 #     fr(y2, k)
 
         return result
+
+
+class FluxInterpolation(Interpolation):
+    def __init__(self, grd: Grid, det: List[FluxDetector], meta):
+        super().__init__(grd, det)
+
+        self.meta_data = meta
+        self.from_l, self.to_l = [int(i) for i in self.meta_data['name'].split('_')[1:3]]
+
+        self.xc, self.yc, self.zc, self._xc, self._yc, self._zc = [], [], [], [], [], []  # cell
+        self.xd, self.yd, self.zd, self._xd, self._yd, self._zd = [], [], [], [], [], []  # detectors
+        self.xr, self.yr, self.zr, self._xr, self._yr, self._zr = [], [], [], [], [], []  # results
+
+    def nearest(self):
+        yield
+
+        self._find_detectors()
+        self._find_mesh_points()
+
+        yield
+
+        self._interpolate_nearest(self.xc, self.xd, self.xr)
+        self._interpolate_nearest(self.yc, self.yd, self.yr)
+        self._interpolate_nearest(self.zc, self.zd, self.zr)
+        self._interpolate_nearest(self._xc, self._xd, self._xr)
+        self._interpolate_nearest(self._yc, self._yd, self._yr)
+        self._interpolate_nearest(self._zc, self._zd, self._zr)
+
+        yield
+
+        self._save()
+
+    def n_nearest(self):
+        yield
+
+        self._find_detectors()
+        log_time(self._find_mesh_points)()
+
+        yield
+
+        self._interpolate_n_nearest(self.xc, self.xd, self.xr)
+        self._interpolate_n_nearest(self.yc, self.yd, self.yr)
+        self._interpolate_n_nearest(self.zc, self.zd, self.zr)
+        self._interpolate_n_nearest(self._xc, self._xd, self._xr)
+        self._interpolate_n_nearest(self._yc, self._yd, self._yr)
+        self._interpolate_n_nearest(self._zc, self._zd, self._zr)
+
+        yield
+
+        self._save()
+
+    def _save(self):
+        SaveFlux(self.xr, **self.meta_data).save_one_dim(1, 'wx', 1)
+        SaveFlux(self.yr, **self.meta_data).save_one_dim(3, 'wy', 2)
+        SaveFlux(self.zr, **self.meta_data).save_one_dim(5, 'wz', 3)
+        SaveFlux(self._xr, **self.meta_data).save_one_dim(0, 'w_x', -1)
+        SaveFlux(self._yr, **self.meta_data).save_one_dim(2, 'w_y', -2)
+        SaveFlux(self._zr, **self.meta_data).save_one_dim(4, 'w_z', -3)
+
+    def _find_mesh_points(self):
+
+        for i in range(self.mesh.space.shape[0]):
+            for j in range(self.mesh.space.shape[1]):
+                for k in range(self.mesh.space.shape[2]):
+
+                    if i < self.mesh.space.shape[0] - 1 \
+                            and self.mesh.space[i, j, k] == self.from_l \
+                            and self.mesh.space[i + 1, j, k] == self.to_l:
+                        self.xc.append((i, j, k))
+
+                    if i > 0 and self.mesh.space[i, j, k] == self.from_l \
+                            and self.mesh.space[i - 1, j, k] == self.to_l:
+                        self._xc.append((i, j, k))
+
+                    if j < self.mesh.space.shape[1] - 1 \
+                            and self.mesh.space[i, j, k] == self.from_l \
+                            and self.mesh.space[i, j + 1, k] == self.to_l:
+                        self.yc.append((i, j, k))
+
+                    if j > 0 and self.mesh.space[i, j, k] == self.from_l \
+                            and self.mesh.space[i, j - 1, k] == self.to_l:
+                        self._yc.append((i, j, k))
+
+                    if k < self.mesh.space.shape[2] - 1 \
+                            and self.mesh.space[i, j, k] == self.from_l \
+                            and self.mesh.space[i, j, k + 1] == self.to_l:
+                        self.zc.append((i, j, k))
+
+                    if k > 0 and self.mesh.space[i, j, k] == self.from_l \
+                            and self.mesh.space[i, j, k - 1] == self.to_l:
+                        self._zc.append((i, j, k))
+
+    def _find_detectors(self):
+
+        for detector in self.detectors:
+
+            if detector.nx > 0:
+                self.xd.append(detector)
+            if detector.nx < 0:
+                self._xd.append(detector)
+            if detector.ny > 0:
+                self.yd.append(detector)
+            if detector.ny < 0:
+                self._yd.append(detector)
+            if detector.nz > 0:
+                self.zd.append(detector)
+            if detector.nz < 0:
+                self._zd.append(detector)
+
+    def _get_axe_name(self, ax):
+
+        if ax is self.xc:
+            return 'x', 'wx'
+        elif ax is self.yc:
+            return 'y', 'wy'
+        elif ax is self.zc:
+            return 'z', 'wz'
+        elif ax is self._xc:
+            return '-x', 'w_x'
+        elif ax is self._yc:
+            return '-y', 'w_y'
+        elif ax is self._zc:
+            return '-z', 'w_z'
+
+    def _n_nearest_calculations(self, distances, ii, k_, values):
+
+        energies = self.meta_data['template']['energies']
+        distances_set = set(distances)
+
+        max_distance = np.max(distances)
+        weights = 1. - distances / max_distance
+
+        if len(distances_set) > 1:
+            weights = weights / np.sum(weights)
+        else:
+            weights = np.array([1 / k_ for _ in range(weights.shape[0])])
+
+        detectors = [values[i] for i in ii]
+
+        nx = sum([det.x * w for det, w in zip(detectors, weights)])
+        ny = sum([det.y * w for det, w in zip(detectors, weights)])
+        nz = sum([det.z * w for det, w in zip(detectors, weights)])
+        nx, ny, nz = pi_utility.norm_vector(nx, ny, nz)
+
+        projections = []
+        for i in range(len(energies)):
+            p = DetectorValuesProjections()
+            for _attr in DetectorValuesProjections.__annotations__.keys():
+                value = sum([det.projections[i].__getattribute__(_attr) * w for det, w in zip(detectors, weights)])
+                p.__setattr__(_attr, value)
+            projections.append(p)
+
+        if self.meta_data['measure'] == 'DETAILED':
+            nx_d, ny_d, nz_d = [], [], []
+
+            for i in range(len(energies)):
+                nx_d.append(sum([det.nx_d[i] * w for det, w in zip(detectors, weights)]))
+                ny_d.append(sum([det.ny_d[i] * w for det, w in zip(detectors, weights)]))
+                nz_d.append(sum([det.nz_d[i] * w for det, w in zip(detectors, weights)]))
+
+                nx_d[i], ny_d[i], nz_d[i] = pi_utility.norm_vector(nx_d[i], ny_d[i], nz_d[i])
+
+            return FluxDetector(0., 0., 0., nx, ny, nz, None, projections, nx_d, ny_d, nz_d)
+
+        elif self.meta_data['measure'] == 'BASIC':
+            return FluxDetector(0., 0., 0., nx, ny, nz, None, projections)
+
+    def _interpolate_nearest(self, cells, detectors: List[FluxDetector], result: List):
+
+        if len(detectors) == 0:
+            return
+
+        tree = KDTree(
+            np.array([[det.x, det.y, det.z] for det in detectors])
+        )
+
+        for i, j, k in cells:
+            distances, ii = tree.query([self.mesh.x[i], self.mesh.y[j], self.mesh.z[k]], k=1)
+
+            d = FluxDetector(self.mesh.x[i], self.mesh.y[j], self.mesh.z[k],
+                             detectors[ii].nx, detectors[ii].ny, detectors[ii].nz,
+                             detectors[ii].results, detectors[ii].projections,
+                             detectors[ii].nx_d, detectors[ii].ny_d, detectors[ii].nz_d, )
+
+            result.append(d)
+
+    def _interpolate_n_nearest(self, cells, detectors: List[FluxDetector], result: List):
+
+        if len(detectors) == 0:
+            return
+
+        axe, attr = self._get_axe_name(cells)
+        if self.meta_data['n'] <= len(detectors):
+            k_ = self.meta_data['n']
+        else:
+            print(f'Недостаточно детекторов по оси {axe}.'
+                  f' Количество действующих детекторов уменьшено до {len(detectors)}')
+            k_ = len(detectors)
+
+        tree = KDTree(np.array([[det.x, det.y, det.z] for det in detectors]))
+
+        for i, j, k in cells:
+            distances, ii = tree.query([self.mesh.x[i], self.mesh.y[j], self.mesh.z[k]], k=k_)
+
+            if 0 <= distances[0] <= 1e-6:
+                result.append(detectors[ii])
+                continue
+
+            detector = self._n_nearest_calculations(distances, ii, k_, detectors)
+            detector.x, detector.y, detector.z = self.mesh.x[i], self.mesh.y[j], self.mesh.z[k]
+            result.append(detector)

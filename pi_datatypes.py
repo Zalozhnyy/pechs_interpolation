@@ -10,6 +10,7 @@ class InterpolationMethods(Enum):
     n_nearest = 1
     pillar = 2
     flux_translation = 3
+    flux_nearest = 4
 
 
 @dataclass
@@ -56,12 +57,17 @@ class FluxDetector:
     x: float
     y: float
     z: float
-    nx: Union[float, List[float]]
-    ny: Union[float, List[float]]
-    nz: Union[float, List[float]]
+    nx: float
+    ny: float
+    nz: float
 
     results: np.ndarray
     projections: List[DetectorValuesProjections] = None
+
+    nx_d: List[float] = None
+    ny_d: List[float] = None
+    nz_d: List[float] = None
+
 
 
 class ToManyActiveDetectors(Exception):

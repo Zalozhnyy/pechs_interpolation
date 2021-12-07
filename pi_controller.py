@@ -5,7 +5,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from pi_interpolation import NearestInterpolation, PillarInterpolation
+from pi_interpolation import NearestInterpolation, PillarInterpolation, FluxInterpolation
 from pi_datatypes import Grid, Detector, InterpolationMethods
 import pi_utility
 import pi_datatypes
@@ -13,7 +13,7 @@ from read_REMP import read_REMP
 from pi_interpolation_save import Save, SaveFlux
 
 
-class DataCreator:
+class DataGenerator:
 
     @classmethod
     def create_data(cls):
@@ -128,38 +128,37 @@ class GridProcessing:
             detectors = []
 
             for det in range(len(coordinates)):
-                x, y, z = [float(i) for i in coordinates[det].strip().split()[:3]]
+                x, y, z, nx, ny, nz, r = [float(i) for i in coordinates[det].strip().split()]
+                nx, ny, nz = pi_utility.norm_vector(nx, ny, nz)
 
                 res_slice = res_data[res_pointer:res_pointer + en_count]
                 res_pointer += en_count
 
-                nx = res_slice[:, 2]
-                ny = res_slice[:, 3]
-                nz = res_slice[:, 4]
+                nx_d = res_slice[:, 2]
+                ny_d = res_slice[:, 3]
+                nz_d = res_slice[:, 4]
                 results = res_slice[:, 1]
 
-                for i in range(len(nx)):
-                    norm = (nx[i] ** 2 + ny[i] ** 2 + nz[i] ** 2) ** 0.5
-
-                    nx[i] = 0. if nx[i] == 0. else nx[i] / norm
-                    ny[i] = 0. if ny[i] == 0. else ny[i] / norm
-                    nz[i] = 0. if nz[i] == 0. else nz[i] / norm
-
+                for i in range(len(nx_d)):
+                    nx_d[i], ny_d[i], nz_d[i] = pi_utility.norm_vector(nx_d[i], ny_d[i], nz_d[i])
 
                 projections = []
                 for j in range(results.shape[0]):
-                    projections.append(pi_utility.get_projection_detailed((nx[j], ny[j], nz[j]), results[j]))
+                    projections.append(pi_utility.get_projection_detailed((nx_d[i], ny_d[i], nz_d[i]), results[j]))
 
                 detectors.append(
                     pi_datatypes.FluxDetector(
                         x,
                         y,
                         z,
-                        nx.tolist(),
-                        ny.tolist(),
-                        nz.tolist(),
+                        nx,
+                        ny,
+                        nz,
                         results,
-                        projections
+                        projections,
+                        nx_d.tolist(),
+                        ny_d.tolist(),
+                        nz_d.tolist(),
                     )
                 )
 
@@ -169,27 +168,7 @@ class GridProcessing:
 class Calculations:
     def _coroutine(self, *args, **kwargs):
         mesh, detectors = args
-        pb = kwargs['progress_bar']
-        pb.configure(maximum=mesh.x.shape[0])
-
-        if kwargs['method'] == InterpolationMethods.n_nearest:
-            gen = NearestInterpolation(mesh, detectors).k_nearest(kwargs['n'])
-            v = pb['length'] // mesh.x.shape[0]
-
-        elif kwargs['method'] == InterpolationMethods.nearest:
-            gen = NearestInterpolation(mesh, detectors).nearest()
-            v = pb['length'] // mesh.x.shape[0]
-
-        elif kwargs['method'] == InterpolationMethods.pillar:
-            gen = PillarInterpolation(mesh, detectors).pillar()
-            v = pb['length'] // detectors.coordinates.shape[0]
-
-        elif kwargs['method'] == InterpolationMethods.flux_translation:
-            SaveFlux(detectors, **kwargs)
-            return
-
-        else:
-            raise Exception('Unknown interpolation method')
+        pb, gen, v = self._pick_interpolation_method(mesh, detectors, **kwargs)
 
         while True:
             try:
@@ -199,6 +178,52 @@ class Calculations:
             except StopIteration:
                 print(f'Завершён расчет {kwargs["name"]}')
                 break
+
+    def _pick_interpolation_method(self, mesh, detectors, **kwargs):
+        pb = kwargs['progress_bar']
+        pb.configure(maximum=mesh.x.shape[0])
+
+        if kwargs['type'] != 'FLUX':
+
+            if kwargs['method'] == InterpolationMethods.n_nearest:
+                gen = NearestInterpolation(mesh, detectors).k_nearest(kwargs['n'])
+                v = pb['length'] // mesh.x.shape[0]
+
+            elif kwargs['method'] == InterpolationMethods.nearest:
+                gen = NearestInterpolation(mesh, detectors).nearest()
+                v = pb['length'] // mesh.x.shape[0]
+
+            elif kwargs['method'] == InterpolationMethods.pillar:
+                gen = PillarInterpolation(mesh, detectors).pillar()
+                v = pb['length'] // detectors.coordinates.shape[0]
+
+            else:
+                raise Exception('Unknown interpolation method')
+
+        elif kwargs['type'] == 'FLUX':
+
+            if kwargs['method'] == InterpolationMethods.flux_translation:
+                gen = SaveFlux(detectors, **kwargs).translation_save()
+                pb.configure(maximum=6)
+                v = 1
+
+            elif kwargs['method'] == InterpolationMethods.nearest:
+                gen = FluxInterpolation(mesh, detectors, kwargs).nearest()
+                pb.configure(maximum=3)
+                v = 1
+
+            elif kwargs['method'] == InterpolationMethods.n_nearest:
+                gen = FluxInterpolation(mesh, detectors, kwargs).n_nearest()
+                pb.configure(maximum=3)
+                v = 1
+
+            else:
+                raise Exception('Unknown interpolation method')
+
+        else:
+            raise Exception('Unknown interpolation method')
+
+        return pb, gen, v
 
     def _calculate_current(self, *args, **kwargs):
         layer = int(kwargs['name'].split('_')[1])
@@ -231,6 +256,9 @@ class Calculations:
         Save().save_remp(mesh, kwargs['remp_dir'], 'en_' + '_'.join(kwargs['name'].split('_')[1:]))
 
     def _calculate_flux(self, *args, **kwargs):
+        _, grid, space, _, _, _ = read_REMP(kwargs['remp_dir'])
+        mesh = GridProcessing.process_remp(grid[0]['i05'], grid[1]['i05'], grid[2]['i05'], space)
+
         if kwargs['measure'] == 'BASIC':
             detectors = GridProcessing.process_pechs_flux_basic(kwargs['lst'], kwargs['res'])
         elif kwargs['measure'] == 'DETAILED':
@@ -239,7 +267,8 @@ class Calculations:
                                                                    len(kwargs['template']['energies']))
         else:
             raise Exception('unknown measure type')
-        SaveFlux(detectors, **kwargs)
+
+        self._coroutine(mesh, detectors, **kwargs)
 
     def calculate(self, *args, **kwargs):
         if kwargs['type'] == 'ENERGY':
@@ -274,9 +303,10 @@ def main():
 
     _, grid, space, _, _, _ = read_REMP(project_path)
 
-    mesh = GridProcessing.process_remp(grid[0]['i'], grid[1]['i'], grid[2]['i'], space)
+    mesh = GridProcessing.process_remp(grid[0]['i05'], grid[1]['i05'], grid[2]['i05'], space)
 
     detectors = GridProcessing.process_pechs_flux_detailed(lst_file, res_file, 5)
+    # detectors = GridProcessing.process_pechs_flux_basic(lst_file, res_file)
     # detectors = GridProcessing.process_pechs_current(lst_file, res_file, 4, 'z')
 
     # mesh, detectors = grd_creator.create_pillar()
@@ -287,12 +317,11 @@ def main():
             'energies': [50, 150, 250, 350, 450],
         },
         'measure': 'DETAILED',
-        'remp_dir': project_path
+        'remp_dir': project_path,
+        'n': 3,
     }
-    s = SaveFlux(detectors, **meta)
-    exit(0)
     # gen = PillarInterpolation(mesh, detectors).pillar()
-    gen = NearestInterpolation(mesh, detectors).k_nearest(2)
+    gen = FluxInterpolation(mesh, detectors, meta).nearest()
 
     while True:
         try:
@@ -303,6 +332,7 @@ def main():
         except Exception('Error while calculation') as e:
             print(e)
             break
+    exit(0)
 
     # for i, (a, v) in enumerate(
     #         zip(mesh.array[10, 10, 121:121 - detectors.results.shape[0]:-1][::-1], detectors.results)):

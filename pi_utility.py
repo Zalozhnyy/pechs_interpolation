@@ -14,6 +14,16 @@ def find_nearest(axe: np.ndarray, point: Union[int, float]) -> int:
     return axe.shape[0] - 1
 
 
+def norm_vector(nx, ny, nz):
+    norm = (nx ** 2 + ny ** 2 + nz ** 2) ** 0.5
+
+    x = 0. if nx == 0 else nx / norm
+    y = 0. if ny == 0 else ny / norm
+    z = 0. if nz == 0 else nz / norm
+
+    return x, y, z
+
+
 def find_nearest_binary(axe: np.ndarray, point: Union[int, float]) -> int:
     l, r = 0, axe.shape[0] - 1
 
