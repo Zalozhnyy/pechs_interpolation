@@ -41,8 +41,8 @@ class SaveFlux:
         {spc_number}
         Spectre power (cnt/cm**2/s)- surface, (cnt/cm**3/s)- volumeric
         1
-        Spectr type (0-fixed, 1-random, 3-detectors)
-        3
+        Spectr type (0-fixed, 1-random, 3-detectors, 31-detectors interpolated)
+        {spectr_type}
         Particle count
         {en_count}
         Detectors count
@@ -80,12 +80,14 @@ class SaveFlux:
         fname = '_'.join(list(map(str, [from_, to_, indx, particle]))) + '.spc'
 
         sp_number = f'{int(from_):0>2d}{int(to_):0>2d}{indx}{particle}'
+        spectr_type = 3 if self.meta_data['method'] == InterpolationMethods.flux_translation else 31
 
         lines = copy(self.TEMPLATE_CAP).format(
             particle_name='electron',
             spc_number=sp_number,
             en_count=len(self.meta_data['energy']),
-            detectors_count=len(self.detectors)
+            detectors_count=len(self.detectors),
+            spectr_type=spectr_type
         ).split('\n')
         lines = [i.replace(' ', '') for i in lines]
 

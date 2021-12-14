@@ -242,7 +242,7 @@ class FluxInterpolation(Interpolation):
         yield
 
         self._find_detectors()
-        log_time(self._find_mesh_points)()
+        self._find_mesh_points()
 
         yield
 

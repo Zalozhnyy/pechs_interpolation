@@ -296,18 +296,19 @@ def debug_plot(mesh: Grid):
 def main():
     # mesh, detectors = DataCreator.create_data_2d()
 
-    project_path = r'C:\Users\\niczz\Dropbox\work_cloud\projects\project_test_interpolation'
+    project_path = r'C:\Users\Admin\Dropbox\work_cloud\projects\emk_8'
 
-    lst_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\initials\flux_2_4_1.lst'
-    res_file = r'C:\Users\niczz\Dropbox\work_cloud\projects\project_test_interpolation\pechs\pe_flux\results\flux_2_4_1.res'
+    lst_file = r'C:\Users\Admin\Dropbox\work_cloud\projects\emk_8\pechs\pechs_1\initials\volume_4.lst'
+    res_file = r'C:\Users\Admin\Dropbox\work_cloud\projects\emk_8\pechs\pechs_1\results\energy_4_1.res'
 
     _, grid, space, _, _, _ = read_REMP(project_path)
 
     mesh = GridProcessing.process_remp(grid[0]['i05'], grid[1]['i05'], grid[2]['i05'], space)
 
-    detectors = GridProcessing.process_pechs_flux_detailed(lst_file, res_file, 5)
+    # detectors = GridProcessing.process_pechs_flux_detailed(lst_file, res_file, 5)
     # detectors = GridProcessing.process_pechs_flux_basic(lst_file, res_file)
     # detectors = GridProcessing.process_pechs_current(lst_file, res_file, 4, 'z')
+    detectors = GridProcessing.process_pechs_direct_files(lst_file, res_file, 4)
 
     # mesh, detectors = grd_creator.create_pillar()
     print(f'GRID | {mesh.array.shape}')
@@ -316,12 +317,13 @@ def main():
         'template': {
             'energies': [50, 150, 250, 350, 450],
         },
-        'measure': 'DETAILED',
+        'measure': 'BASIC',
         'remp_dir': project_path,
         'n': 3,
     }
     # gen = PillarInterpolation(mesh, detectors).pillar()
-    gen = FluxInterpolation(mesh, detectors, meta).nearest()
+    # gen = FluxInterpolation(mesh, detectors, meta).nearest()
+    gen = NearestInterpolation(mesh, detectors).k_nearest(5)
 
     while True:
         try:
@@ -332,13 +334,13 @@ def main():
         except Exception('Error while calculation') as e:
             print(e)
             break
-    exit(0)
 
     # for i, (a, v) in enumerate(
     #         zip(mesh.array[10, 10, 121:121 - detectors.results.shape[0]:-1][::-1], detectors.results)):
     #     print(f'det={v:10f}  arr={a:10f}  {round(v, 6) == round(a, 6)}  {detectors.coordinates[i, 2]}')
     # for k in range(0, mesh.y.shape[1], 20):
-    for k in range(110, 121, 1):
+
+    for k in range(50, 120, 5):
         plt.contourf(mesh.x, mesh.y, mesh.array[:, :, k], cmap=plt.cm.bone)
         plt.title(f'k={k}')
         plt.colorbar()

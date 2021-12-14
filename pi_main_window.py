@@ -256,7 +256,6 @@ class MainWindow(tk.Frame):
 
             except Exception as e:
                 print(traceback.format_exc())
-                # mb.showerror('Ошибка', e)
-                break
+                mb.showerror('Ошибка', e)
 
             self.calc_button['state'] = 'normal'
