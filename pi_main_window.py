@@ -17,7 +17,7 @@ INTERPOLATION_METHODS = {
     'По ближайшему': InterpolationMethods.nearest,
     'По n ближайшим': InterpolationMethods.n_nearest,
     'Столб': InterpolationMethods.pillar,
-    'Формат spc (только для flux)': InterpolationMethods.flux_translation,
+    # 'Формат spc (только для flux)': InterpolationMethods.flux_translation,
 }
 
 SUPPORTED_CALCS = {'energy', 'current', 'flux'}
@@ -207,11 +207,6 @@ class MainWindow(tk.Frame):
 
         for i, (name, det) in enumerate(data.pechs_detectors_families.items()):
             if not self._pechs_values_activations[i].get():
-                continue
-
-            if det['type'] != 'FLUX' and data.calculation_method == InterpolationMethods.flux_translation:
-                print(f'Для {name} недоступен выбранный метод.')
-                self._pechs_values_activations[i].set(False)
                 continue
 
             try:

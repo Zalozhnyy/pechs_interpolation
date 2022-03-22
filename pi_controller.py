@@ -208,8 +208,10 @@ class Calculations:
                 v = 1
 
             elif kwargs['method'] == InterpolationMethods.nearest:
-                gen = FluxInterpolation(mesh, detectors, kwargs).nearest()
-                pb.configure(maximum=3)
+                # gen = FluxInterpolation(mesh, detectors, kwargs).nearest()
+                # pb.configure(maximum=3)
+                gen = SaveFlux(detectors, **kwargs).translation_save()
+                pb.configure(maximum=6)
                 v = 1
 
             elif kwargs['method'] == InterpolationMethods.n_nearest:

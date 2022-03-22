@@ -258,12 +258,18 @@ class FluxInterpolation(Interpolation):
         self._save()
 
     def _save(self):
-        SaveFlux(self.xr, **self.meta_data).save_one_dim(1, 'wx', 1)
-        SaveFlux(self.yr, **self.meta_data).save_one_dim(3, 'wy', 2)
-        SaveFlux(self.zr, **self.meta_data).save_one_dim(5, 'wz', 3)
-        SaveFlux(self._xr, **self.meta_data).save_one_dim(0, 'w_x', -1)
-        SaveFlux(self._yr, **self.meta_data).save_one_dim(2, 'w_y', -2)
-        SaveFlux(self._zr, **self.meta_data).save_one_dim(4, 'w_z', -3)
+        res = [self.xr, self.yr, self.zr, self._xr, self._yr, self._zr]
+        det = [self.xd, self.yd, self.zd, self._xd, self._yd, self._zd]
+        dim = [1, 3, 5, 0, 2, 4]
+        arg_ = ['wx', 'wy', 'wz', 'w_x', 'w_y', 'w_z']
+        dim2 = [1, 2, 3, -1, -2, -3]
+
+        for r, d, _dim1, _arg, _dim2 in zip(res, det, dim, arg_, dim2):
+            if len(r) > 0:
+                SaveFlux(r, **self.meta_data).save_one_dim(_dim1, _arg, _dim2)
+            else:
+                print(f'Для спектра по {_arg} не найдены необходимые точки в файле CELL. ')
+                SaveFlux(d, **self.meta_data).save_one_dim(_dim1, _arg, _dim2)
 
     def _find_mesh_points(self):
 
