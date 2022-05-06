@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 
 from collections import defaultdict
@@ -111,3 +113,9 @@ def get_projection_detailed(vector, value) -> pi_datatypes.DetectorValuesProject
         arr['_ny'],
         arr['_nz'],
     )
+
+
+def print_progress(progress, total):
+    percent = 100 * (progress / float(total))
+    bar = '█' * int(percent) + '-' * (100 - int(percent))
+    print(f"\r|{bar}| {percent:.2f}%", end='\r')

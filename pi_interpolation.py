@@ -7,7 +7,7 @@ from scipy.spatial import KDTree
 import pi_utility
 from pi_datatypes import Grid, Detector, ToManyActiveDetectors, CantFindPillarAxe, FluxDetector, InterpolationMethods, \
     DetectorValuesProjections
-from pi_utility import find_nearest
+from pi_utility import find_nearest, print_progress
 from pi_interpolation_save import SaveFlux
 
 
@@ -68,8 +68,7 @@ class NearestInterpolation(Interpolation):
         ni, nj, nk = self.mesh.x.shape[0], self.mesh.y.shape[0], self.mesh.z.shape[0],
 
         for i in range(ni):
-            if (i + 1) % 10 == 0 or i == ni - 1:
-                print(f'Progress {i + 1}/{ni}')
+            print_progress(i + 1, ni)
             yield
             for j in range(nj):
                 for k in range(nk):
@@ -103,8 +102,8 @@ class NearestInterpolation(Interpolation):
         ni, nj, nk = self.mesh.x.shape[0], self.mesh.y.shape[0], self.mesh.z.shape[0],
 
         for i in range(ni):
-            if (i + 1) % 10 == 0 or i == ni - 1:
-                print(f'Progress {i + 1}/{ni}')
+            print_progress(i + 1, ni)
+
             yield
             for j in range(nj):
                 for k in range(nk):
